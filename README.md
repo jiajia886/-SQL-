@@ -22,7 +22,7 @@
 
 ### 环境要求
 
-- Python 3.7+
+- Python 3.12+
 - 阿里云DashScope API密钥
 
 ### 安装步骤
@@ -101,3 +101,4 @@ flowchat/
 ## 许可证
 
 本项目采用MIT许可证。
+
