@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字转SQL与流程框图系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+
+        .card-header {
+            background-color: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            padding: 15px;
+        }
+
+        .flowchart-container {
+            min-height: 400px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .flowchart-node {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 80%;
+            max-width: 500px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .flowchart-node:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .flowchart-node.selected {
+            border: 2px solid #4361ee;
+        }
+        
+        /* 特定节点类型样式 */
+        .start-node {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 20px;
+        }
+        
+        .end-node {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 20px;
+        }
+        
+        .decision-node {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            transform: rotate(0deg);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            padding: 25px 15px;
+            margin: 10px auto 30px;
+            width: 70%;
+            max-width: 300px;
+        }
+        
+        .data-node {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            transform: skewX(-10deg);
+        }
+        
+        .data-node .node-text {
+            transform: skewX(10deg);
+        }
+
+        .flowchart-node .node-type {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .flowchart-node .node-text {
+            font-weight: 500;
+        }
+
+        .flowchart-node .node-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .flowchart-node:hover .node-actions {
+            opacity: 1;
+        }
+
+        .flowchart-connection {
+            position: relative;
+            width: 2px;
+            height: 30px;
+            background-color: #6c757d;
+            margin: -15px auto 15px;
+            z-index: 0;
+        }
+
+        .flowchart-connection::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid #6c757d;
+        }
+
+        .sql-container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+        }
+
+        .sql-code {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            min-height: 150px;
+        }
+
+        .btn-primary {
+            background-color: #4361ee;
+            border-color: #4361ee;
+        }
+
+        .btn-primary:hover {
+            background-color: #3a56d4;
+            border-color: #3a56d4;
+        }
+
+        .btn-outline-primary {
+            color: #4361ee;
+            border-color: #4361ee;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: #4361ee;
+            border-color: #4361ee;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4361ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .modal .modal-content {
+            border-radius: 10px;
+        }
+
+        .form-control:focus {
+            border-color: #4361ee;
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+        }
+
+        .form-select:focus {
+            border-color: #4361ee;
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="toast-container"></div>
+
+    <div class="main-container">
+        <div class="header">
+            <h1 class="text-center mb-0">文字转SQL与流程框图系统</h1>
+            <p class="text-center mb-0 mt-2">基于大模型技术，实现自然语言到SQL的转换，并生成对应的纵向流程图</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-keyboard me-2"></i>输入区域</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="naturalLanguage" class="form-label">自然语言描述</label>
+                            <textarea class="form-control" id="naturalLanguage" rows="5" placeholder="请输入您的查询需求，例如：查询所有年龄大于30岁的用户信息"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="schema" class="form-label">数据库结构（可选）</label>
+                            <textarea class="form-control" id="schema" rows="5" placeholder="可选：提供数据库表结构信息，以便更准确地生成SQL"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" id="generateBtn">
+                                <i class="fas fa-magic me-2"></i>生成SQL与流程图
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-database me-2"></i>SQL输出</span>
+                        <button class="btn btn-sm btn-outline-primary" id="copySqlBtn">
+                            <i class="fas fa-copy me-1"></i>复制
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="sql-container">
+                            <div class="sql-code" id="sqlOutput">等待生成SQL...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-sitemap me-2"></i>流程图</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2" id="addStepBtn">
+                                <i class="fas fa-plus me-1"></i>添加步骤
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" id="refreshFlowchartBtn">
+                                <i class="fas fa-sync-alt me-1"></i>刷新
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="flowchart-container" id="flowchartContainer">
+                            <div class="text-center text-muted my-5">
+                                <i class="fas fa-sitemap fa-3x mb-3"></i>
+                                <p>等待生成流程图...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑步骤模态框 -->
+    <div class="modal fade" id="editStepModal" tabindex="-1" aria-labelledby="editStepModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editStepModalLabel">编辑步骤</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="stepType" class="form-label">步骤类型</label>
+                        <select class="form-select" id="stepType">
+                            <option value="process">处理</option>
+                            <option value="decision">判断</option>
+                            <option value="data">数据</option>
+                            <option value="start">开始</option>
+                            <option value="end">结束</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stepDescription" class="form-label">步骤描述</label>
+                        <textarea class="form-control" id="stepDescription" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="deleteStepBtn">删除</button>
+                    <button type="button" class="btn btn-primary" id="saveStepBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加步骤模态框 -->
+    <div class="modal fade" id="addStepModal" tabindex="-1" aria-labelledby="addStepModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addStepModalLabel">添加步骤</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newStepType" class="form-label">步骤类型</label>
+                        <select class="form-select" id="newStepType">
+                            <option value="process">处理</option>
+                            <option value="decision">判断</option>
+                            <option value="data">数据</option>
+                            <option value="start">开始</option>
+                            <option value="end">结束</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newStepDescription" class="form-label">步骤描述</label>
+                        <textarea class="form-control" id="newStepDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="afterStep" class="form-label">插入位置</label>
+                        <select class="form-select" id="afterStep">
+                            <option value="">作为第一步</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmAddStepBtn">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 全局变量
+            let currentFlowchart = null;
+            let currentSteps = [];
+            let selectedStepId = null;
+
+            // DOM元素
+            const naturalLanguageInput = document.getElementById('naturalLanguage');
+            const schemaInput = document.getElementById('schema');
+            const generateBtn = document.getElementById('generateBtn');
+            const sqlOutput = document.getElementById('sqlOutput');
+            const flowchartContainer = document.getElementById('flowchartContainer');
+            const copySqlBtn = document.getElementById('copySqlBtn');
+            const addStepBtn = document.getElementById('addStepBtn');
+            const refreshFlowchartBtn = document.getElementById('refreshFlowchartBtn');
+            const loading = document.querySelector('.loading');
+            const toastContainer = document.querySelector('.toast-container');
+
+            // 模态框元素
+            const editStepModal = new bootstrap.Modal(document.getElementById('editStepModal'));
+            const addStepModal = new bootstrap.Modal(document.getElementById('addStepModal'));
+            const stepType = document.getElementById('stepType');
+            const stepDescription = document.getElementById('stepDescription');
+            const saveStepBtn = document.getElementById('saveStepBtn');
+            const deleteStepBtn = document.getElementById('deleteStepBtn');
+            const newStepType = document.getElementById('newStepType');
+            const newStepDescription = document.getElementById('newStepDescription');
+            const afterStep = document.getElementById('afterStep');
+            const confirmAddStepBtn = document.getElementById('confirmAddStepBtn');
+
+            // 显示加载动画
+            function showLoading() {
+                loading.style.display = 'flex';
+            }
+
+            // 隐藏加载动画
+            function hideLoading() {
+                loading.style.display = 'none';
+            }
+
+            // 显示提示消息
+            function showToast(message, type = 'success') {
+                const toastId = 'toast-' + Date.now();
+                const toastHtml = `
+                    <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                `;
+
+                toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+
+                // 自动移除
+                toastElement.addEventListener('hidden.bs.toast', function() {
+                    toastElement.remove();
+                });
+            }
+
+            // 渲染流程图
+            function renderFlowchart(flowchartData) {
+                if (!flowchartData || !flowchartData.nodes || flowchartData.nodes.length === 0) {
+                    flowchartContainer.innerHTML = `
+                        <div class="text-center text-muted my-5">
+                            <i class="fas fa-sitemap fa-3x mb-3"></i>
+                            <p>等待生成流程图...</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                currentFlowchart = flowchartData;
+                currentSteps = flowchartData.nodes.map(node => ({
+                    step_id: parseInt(node.id.replace('node_', '')),
+                    step_type: node.type,
+                    description: node.text
+                }));
+
+                // 清空容器
+                flowchartContainer.innerHTML = '';
+
+                // 创建节点
+                const nodes = flowchartData.nodes.sort((a, b) => {
+                    const aId = parseInt(a.id.replace('node_', ''));
+                    const bId = parseInt(b.id.replace('node_', ''));
+                    return aId - bId;
+                });
+
+                // 更新添加步骤模态框中的选项
+                afterStep.innerHTML = '<option value="">作为第一步</option>';
+
+                nodes.forEach((node, index) => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'flowchart-node';
+                    nodeEl.id = node.id;
+                    
+                    // 根据节点类型设置不同的样式
+                    let nodeClass = 'flowchart-node';
+                    if (node.type === 'start') nodeClass += ' start-node';
+                    else if (node.type === 'end') nodeClass += ' end-node';
+                    else if (node.type === 'decision') nodeClass += ' decision-node';
+                    else if (node.type === 'data') nodeClass += ' data-node';
+                    
+                    nodeEl.className = nodeClass;
+                    
+                    nodeEl.innerHTML = `
+                        <div class="node-type">${node.type}</div>
+                        <div class="node-text">${node.text}</div>
+                        <div class="node-actions">
+                            <button class="btn btn-sm btn-outline-primary edit-step-btn" data-step-id="${node.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    flowchartContainer.appendChild(nodeEl);
+
+                    // 添加到插入位置选项
+                    afterStep.innerHTML += `<option value="${node.id}">在"${node.text}"之后</option>`;
+
+                    // 添加连接线
+                    if (index < nodes.length - 1) {
+                        const connection = document.createElement('div');
+                        connection.className = 'flowchart-connection';
+                        flowchartContainer.appendChild(connection);
+                    }
+                });
+
+                // 添加编辑步骤事件监听器
+                document.querySelectorAll('.edit-step-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const stepId = this.getAttribute('data-step-id');
+                        openEditStepModal(stepId);
+                    });
+                });
+            }
+
+            // 打开编辑步骤模态框
+            function openEditStepModal(stepId) {
+                selectedStepId = stepId;
+
+                // 查找步骤
+                const step = currentSteps.find(s => `node_${s.step_id}` === stepId);
+
+                if (!step) return;
+
+                // 填充表单
+                stepType.value = step.step_type;
+                stepDescription.value = step.description;
+
+                // 显示模态框
+                editStepModal.show();
+            }
+
+            // 生成SQL和流程图
+            async function generateSqlAndFlowchart() {
+                const naturalLanguage = naturalLanguageInput.value.trim();
+                const schema = schemaInput.value.trim();
+
+                if (!naturalLanguage) {
+                    showToast('请输入自然语言描述', 'error');
+                    return;
+                }
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/generate_sql', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            natural_language: naturalLanguage,
+                            schema: schema || null
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // 显示SQL
+                        sqlOutput.textContent = data.sql;
+
+                        // 渲染流程图
+                        renderFlowchart(data.flowchart);
+
+                        showToast('SQL和流程图生成成功');
+                    } else {
+                        showToast(data.error || '生成失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('网络错误，请稍后重试', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 更新流程图
+            async function updateFlowchart() {
+                if (!currentSteps || currentSteps.length === 0) {
+                    showToast('没有可更新的流程图', 'error');
+                    return;
+                }
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/update_flowchart', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            steps: currentSteps
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // 显示SQL
+                        sqlOutput.textContent = data.sql;
+
+                        // 渲染流程图
+                        renderFlowchart(data.flowchart);
+
+                        showToast('流程图和SQL更新成功');
+                    } else {
+                        showToast(data.error || '更新失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('网络错误，请稍后重试', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 添加步骤
+            async function addStep() {
+                const stepType = newStepType.value;
+                const description = newStepDescription.value.trim();
+                const afterId = afterStep.value;
+
+                if (!description) {
+                    showToast('请输入步骤描述', 'error');
+                    return;
+                }
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/add_step', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            step_type: stepType,
+                            description: description,
+                            after_id: afterId || null
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // 显示SQL
+                        sqlOutput.textContent = data.sql;
+
+                        // 渲染流程图
+                        renderFlowchart(data.flowchart);
+
+                        // 关闭模态框
+                        addStepModal.hide();
+
+                        // 清空表单
+                        newStepDescription.value = '';
+
+                        showToast('步骤添加成功');
+                    } else {
+                        showToast(data.error || '添加失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('网络错误，请稍后重试', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 更新步骤
+            async function updateStep() {
+                if (!selectedStepId) return;
+
+                const stepType = document.getElementById('stepType').value;
+                const description = document.getElementById('stepDescription').value.trim();
+
+                if (!description) {
+                    showToast('请输入步骤描述', 'error');
+                    return;
+                }
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/update_step', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            step_id: selectedStepId,
+                            new_text: description,
+                            new_type: stepType
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // 显示SQL
+                        sqlOutput.textContent = data.sql;
+
+                        // 渲染流程图
+                        renderFlowchart(data.flowchart);
+
+                        // 关闭模态框
+                        editStepModal.hide();
+
+                        showToast('步骤更新成功');
+                    } else {
+                        showToast(data.error || '更新失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('网络错误，请稍后重试', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 删除步骤
+            async function removeStep() {
+                if (!selectedStepId) return;
+
+                if (!confirm('确定要删除此步骤吗？')) return;
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/remove_step', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            step_id: selectedStepId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // 显示SQL
+                        sqlOutput.textContent = data.sql;
+
+                        // 渲染流程图
+                        renderFlowchart(data.flowchart);
+
+                        // 关闭模态框
+                        editStepModal.hide();
+
+                        showToast('步骤删除成功');
+                    } else {
+                        showToast(data.error || '删除失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('网络错误，请稍后重试', 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // 复制SQL
+            function copySql() {
+                const sqlText = sqlOutput.textContent;
+
+                if (!sqlText || sqlText === '等待生成SQL...') {
+                    showToast('没有可复制的SQL', 'error');
+                    return;
+                }
+
+                navigator.clipboard.writeText(sqlText).then(() => {
+                    showToast('SQL已复制到剪贴板');
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    showToast('复制失败', 'error');
+                });
+            }
+
+            // 事件监听器
+            generateBtn.addEventListener('click', generateSqlAndFlowchart);
+            copySqlBtn.addEventListener('click', copySql);
+            refreshFlowchartBtn.addEventListener('click', updateFlowchart);
+            saveStepBtn.addEventListener('click', updateStep);
+            deleteStepBtn.addEventListener('click', removeStep);
+            confirmAddStepBtn.addEventListener('click', addStep);
+
+            // 添加步骤按钮
+            addStepBtn.addEventListener('click', function() {
+                // 如果没有流程图，显示提示
+                if (!currentFlowchart || !currentSteps || currentSteps.length === 0) {
+                    showToast('请先生成SQL和流程图', 'error');
+                    return;
+                }
+
+                // 显示模态框
+                addStepModal.show();
+            });
+
+            // 示例数据
+            const exampleText = "查询所有年龄大于30岁的用户信息，包括姓名、年龄和邮箱，并按年龄降序排列";
+
+            // 如果输入框为空，填充示例
+            if (!naturalLanguageInput.value.trim()) {
+                naturalLanguageInput.value = exampleText;
+            }
+        });
+    </script>
+</body>
+</html>
